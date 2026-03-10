@@ -11,18 +11,20 @@ EMAIL      = _account[0].strip()
 PASSWORD   = _account[1].strip()
 SERVER_ID  = os.environ.get("MINESTRATOR_SERVER_ID", "").strip()
 AUTH_TOKEN = os.environ.get("MINESTRATOR_AUTH", "").strip()
-LOCAL_PROXY = "http://127.0.0.1:8080"
+
+_proxy = os.environ.get("GOST_PROXY", "").strip()
+LOCAL_PROXY = "http://127.0.0.1:8080" if _proxy else None
+
+_tg = os.environ.get("TG_BOT", "").strip()
+TG_CHAT_ID = _tg.split(",")[0].strip() if _tg else ""
+TG_TOKEN   = _tg.split(",")[1].strip() if _tg and "," in _tg else ""
 
 LOGIN_URL  = "https://minestrator.com/connexion"
 SERVER_URL = f"https://minestrator.com/my/server/{SERVER_ID}"
 API_URL    = f"https://mine.sttr.io/server/{SERVER_ID}/poweraction"
 
-_tg = os.environ["TG_BOT"].split(",")
-TG_CHAT_ID = _tg[0].strip()
-TG_TOKEN   = _tg[1].strip()
-
 # ============================================================
-# TG 推送
+# TG 推送（可选）
 # ============================================================
 
 def now_str():
@@ -30,6 +32,9 @@ def now_str():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 def send_tg(result, detail=''):
+    if not TG_TOKEN or not TG_CHAT_ID:
+        print("ℹ️ 未配置 TG_BOT，跳过推送")
+        return
     msg = (
         f"🎮 Minestrator 重启通知\n"
         f"🕐 运行时间: {now_str()}\n"
@@ -130,7 +135,6 @@ def wait_for_token(sb, timeout=60) -> str:
 # ============================================================
 
 def send_restart(sb, token: str) -> bool:
-    # token 用 json.dumps 再次序列化为 JS 字符串字面量，安全内嵌进 JS
     token_js = json.dumps(token)
     script = (
         "var done = arguments[0];"
@@ -168,7 +172,14 @@ def send_restart(sb, token: str) -> bool:
 def run_script():
     print("🔧 启动浏览器...")
 
-    with SB(uc=True, test=True, proxy=LOCAL_PROXY) as sb:
+    sb_kwargs = dict(uc=True, test=True)
+    if LOCAL_PROXY:
+        sb_kwargs["proxy"] = LOCAL_PROXY
+        print(f"🌐 使用代理：{LOCAL_PROXY}")
+    else:
+        print("ℹ️ 未配置代理，直连运行")
+
+    with SB(**sb_kwargs) as sb:
         print("🚀 浏览器就绪！")
 
         # ── IP 验证 ──────────────────────────────────────────
